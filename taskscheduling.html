@@ -1,0 +1,1295 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Founder Scheduler — Smart Task & AI Calendar</title>
+  <meta name="description" content="Offline Smart Task Scheduler and AI Calendar for startup founders. Single-file app." />
+  <style>
+    /* --- Theme & layout --- */
+    :root{
+      --bg:#f6fbff;
+      --card:#ffffff;
+      --muted:#6c7b8a;
+      --accent:#0b3d91; /* deep blue */
+      --accent-2:#0aa77a; /* green accent */
+      --accent-3:#2b6fb3;
+      --glass: rgba(11,61,145,0.06);
+      --success:#1aa06b;
+      --danger:#e15241;
+      --radius:10px;
+      --max-width:1100px;
+      --shadow: 0 6px 20px rgba(23,50,102,0.06);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    html,body{height:100%;margin:0;background:linear-gradient(180deg, #f6fbff 0%, #eef7fb 100%);color:#0f1724}
+    .app{max-width:var(--max-width);margin:18px auto;padding:18px;display:flex;flex-direction:column;gap:14px}
+    header.app-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:54px;height:54px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-3));color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;box-shadow:var(--shadow)}
+    header h1{margin:0;font-size:18px}
+    header p{margin:0;color:var(--muted);font-size:13px}
+    .tabs{display:flex;gap:8px}
+    .tab{background:transparent;border:0;padding:8px 12px;border-radius:8px;font-weight:600;color:var(--accent);cursor:pointer}
+    .tab[aria-selected="true"]{background:linear-gradient(90deg, rgba(11,61,145,0.07), rgba(10,167,122,0.03));box-shadow:var(--shadow)}
+    main.container{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+    .left{display:flex;flex-direction:column;gap:12px}
+    .card{background:var(--card);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow)}
+    .small{font-size:13px;color:var(--muted)}
+    .stats{display:flex;gap:10px}
+    .stat{padding:12px;border-radius:8px;background:linear-gradient(180deg,#fbfdff,#f7fbff);flex:1;text-align:center}
+    .stat h3{margin:0;color:var(--accent)}
+    .btn{background:var(--accent);color:white;border:0;padding:8px 12px;border-radius:8px;cursor:pointer;box-shadow:0 6px 18px rgba(11,61,145,0.08)}
+    .btn.secondary{background:transparent;color:var(--accent);border:1px solid var(--glass);box-shadow:none}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:12px;align-items:center}
+    /* Layout for pages */
+    .pages{display:block}
+    .page{display:none}
+    .page.active{display:block}
+    /* Task list */
+    .task-list{display:flex;flex-direction:column;gap:8px;max-height:460px;overflow:auto;padding-right:4px}
+    .task{display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;border:1px solid rgba(11,61,145,0.04);background:linear-gradient(180deg,#fff,#fbfdff);cursor:grab}
+    .task.dragging{opacity:0.6;border-style:dashed}
+    .task .title{font-weight:700}
+    .task .meta{font-size:12px;color:var(--muted)}
+    .pill{padding:6px 8px;border-radius:999px;font-size:12px}
+    .pill.high{background:#ffeceb;color:var(--danger);border:1px solid rgba(225,82,65,0.07)}
+    .pill.med{background:#fff8ec;color:#c77d3a;color:#ad6a2a;border:1px solid rgba(167,120,60,0.06)}
+    .pill.low{background:#ecfff7;color:var(--success);border:1px solid rgba(26,160,107,0.06)}
+    /* Calendar */
+    .cal-controls{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    .cal{display:grid;grid-template-columns: repeat(7, 1fr);gap:6px}
+    .cal .day{min-height:110px;border-radius:8px;padding:8px;border:1px solid rgba(11,61,145,0.04);background:linear-gradient(180deg,#fff,#fbfdff)}
+    .cal .day-header{display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-bottom:8px}
+  /* fix day header height so we can compute offsets for event positioning */
+  .day-header{height:44px}
+    .cal .event{background:linear-gradient(90deg,var(--accent-2),#3bd9a0);color:white;padding:6px 8px;border-radius:6px;font-size:13px;margin-bottom:6px;cursor:pointer}
+    .week-view{display:grid;grid-template-columns:100px repeat(7,1fr);gap:6px;align-items:start}
+    .time-slot{height:42px;border-bottom:1px dashed rgba(11,61,145,0.04)}
+    .time-label{padding:4px;font-size:12px;color:var(--muted)}
+    .calendar-column{border-radius:8px;background:linear-gradient(180deg,#fff,#fbfdff);padding:6px;border:1px solid rgba(11,61,145,0.03);min-height:520px}
+    .time-block{position:relative;background:linear-gradient(90deg,var(--accent),var(--accent-3));color:white;padding:6px;border-radius:6px;margin-bottom:6px;font-size:13px}
+    /* Responsive */
+    @media(max-width:900px){
+      main.container{grid-template-columns:1fr; padding-bottom:12px}
+      .week-view{grid-template-columns:1fr}
+      .cal{grid-template-columns: repeat(2,1fr)}
+    }
+    /* Forms */
+    .form-row{display:flex;gap:8px;align-items:center}
+    input,select,textarea{padding:8px;border-radius:8px;border:1px solid rgba(11,61,145,0.06);font-size:14px;width:100%;box-sizing:border-box}
+    textarea{min-height:80px;resize:vertical}
+    .muted-note{font-size:12px;color:var(--muted)}
+    /* contacts */
+    .contact{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;border:1px solid rgba(11,61,145,0.03);background:linear-gradient(#fff,#fbfdff)}
+    .avatar{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-3));color:white;display:flex;align-items:center;justify-content:center;font-weight:700}
+    /* templates */
+    .template{padding:10px;border-radius:8px;border:1px solid rgba(11,61,145,0.03);background:linear-gradient(#fff,#fbfdff);display:flex;justify-content:space-between;gap:8px;align-items:center}
+    .email-preview{white-space:pre-wrap;background:#f7fbff;padding:10px;border-radius:8px;border:1px dashed rgba(11,61,145,0.03);margin-top:8px}
+    /* small helpers */
+    .flex-between{display:flex;justify-content:space-between;align-items:center}
+    .muted-sm{color:var(--muted);font-size:12px}
+    .kbd{background:#f1f5f9;padding:4px 8px;border-radius:6px;font-weight:700;color:var(--accent)}
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Founder Scheduler">
+    <header class="app-header">
+      <div class="brand" aria-hidden="false">
+        <div class="logo">FS</div>
+        <div>
+          <h1>Founder Scheduler</h1>
+          <p class="small">Smart Task Scheduler • AI Calendar • Meeting Automation</p>
+        </div>
+      </div>
+      <nav class="tabs" role="tablist" aria-label="Primary">
+        <button class="tab" role="tab" data-target="dashboard" aria-selected="true">Dashboard</button>
+        <button class="tab" role="tab" data-target="tasks" aria-selected="false">Tasks</button>
+        <button class="tab" role="tab" data-target="calendar" aria-selected="false">Calendar</button>
+        <button class="tab" role="tab" data-target="contacts" aria-selected="false">Contacts</button>
+        <button class="tab" role="tab" data-target="templates" aria-selected="false">Templates</button>
+        <button class="tab" role="tab" data-target="settings" aria-selected="false">Settings</button>
+      </nav>
+    </header>
+
+    <main class="container" role="main" aria-live="polite">
+      <div class="left">
+        <!-- Dashboard -->
+        <section id="dashboard" class="page active">
+          <div class="card stats">
+            <div class="stat">
+              <h3 id="stat-tasks">0</h3>
+              <p class="small">Tasks</p>
+            </div>
+            <div class="stat">
+              <h3 id="stat-events">0</h3>
+              <p class="small">Scheduled Events</p>
+            </div>
+            <div class="stat">
+              <h3 id="stat-contacts">0</h3>
+              <p class="small">Contacts</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="flex-between">
+              <h3 style="margin:0">Quick actions</h3>
+              <div class="small muted-sm">Automations • Offline</div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn" id="btn-new-task">New Task</button>
+              <button class="btn secondary" id="btn-auto-schedule">Auto-schedule Tasks</button>
+              <button class="btn secondary" id="btn-batch-invite">Schedule Funding Calls</button>
+              <button class="btn secondary" id="btn-export-json">Export Data</button>
+            </div>
+            <div style="margin-top:12px" id="dashboard-log" class="muted-sm">No actions yet.</div>
+          </div>
+
+          <div class="card" style="display:flex;gap:12px;flex-direction:column">
+            <h3 style="margin:0">Upcoming</h3>
+            <div id="upcoming-list" class="muted-sm" style="margin-top:8px">No upcoming events.</div>
+          </div>
+        </section>
+
+        <!-- Tasks -->
+        <section id="tasks" class="page">
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <h3 style="margin:0">Tasks</h3>
+              <div class="small">Add tasks with estimates, deadlines, and priorities. Drag to schedule.</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn" id="open-task-form">Add Task</button>
+              <select id="filter-priority" style="width:160px">
+                <option value="">All priorities</option>
+                <option value="high">High</option>
+                <option value="med">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card" style="display:flex;gap:12px;flex-direction:column">
+            <div class="task-list" id="task-list" aria-live="polite">
+              <!-- tasks go here -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Calendar -->
+        <section id="calendar" class="page">
+          <div class="card">
+            <div class="cal-controls">
+              <div style="display:flex;gap:8px;align-items:center">
+                <button class="btn" id="cal-prev">&larr;</button>
+                <button class="btn" id="cal-today">Today</button>
+                <button class="btn" id="cal-next">&rarr;</button>
+                <select id="cal-view" style="margin-left:10px">
+                  <option value="week">Week</option>
+                  <option value="day">Day</option>
+                  <option value="month">Month</option>
+                </select>
+              </div>
+              <div style="margin-left:auto" class="small muted-sm">Drag tasks onto slots to schedule meetings</div>
+            </div>
+
+            <div id="calendar-area" style="margin-top:8px">
+              <!-- Calendar rendering area -->
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:8px">
+            <h4 style="margin:0">Event Editor</h4>
+            <div style="margin-top:8px;display:grid;grid-template-columns:1fr 160px;gap:8px">
+              <input id="ev-title" placeholder="Event title (meeting / work block)" />
+              <select id="ev-contact"><option value="">No contact</option></select>
+              <input id="ev-date" type="date" />
+              <input id="ev-start" type="time" />
+              <input id="ev-duration" type="number" placeholder="Duration (mins)" value="30" />
+              <div style="display:flex;gap:8px">
+                <button class="btn" id="ev-create">Create Event</button>
+                <button class="btn secondary" id="ev-clear">Clear</button>
+              </div>
+            </div>
+            <div id="event-msg" class="muted-sm" style="margin-top:8px">Use the editor or drag tasks into calendar.</div>
+          </div>
+        </section>
+
+        <!-- Contacts -->
+        <section id="contacts" class="page">
+          <div class="card flex-between">
+            <h3 style="margin:0">Contacts</h3>
+            <div>
+              <button class="btn" id="btn-new-contact">New Contact</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:8px">
+            <div id="contacts-list" style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto"></div>
+          </div>
+        </section>
+
+        <!-- Templates -->
+        <section id="templates" class="page">
+          <div class="card flex-between">
+            <h3 style="margin:0">Email Templates</h3>
+            <div><button class="btn" id="btn-new-template">New Template</button></div>
+          </div>
+          <div class="card" style="margin-top:8px">
+            <div id="templates-list" style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto"></div>
+          </div>
+        </section>
+
+        <!-- Settings -->
+        <section id="settings" class="page">
+          <div class="card">
+            <h3 style="margin:0">Settings & About</h3>
+            <div style="margin-top:8px" class="small">
+              Offline-only scheduler for founders. Data saved to localStorage. Use drag & drop to schedule tasks.
+            </div>
+            <div style="margin-top:12px" class="small">
+              Version: 1.0 • Built for offline use • No external services
+            </div>
+          </div>
+          <div class="card" style="margin-top:12px">
+            <h4 style="margin:0">AI Assistant Settings</h4>
+            <div style="margin-top:8px;display:grid;gap:8px">
+              <label>
+                <div class="small">API Key for AI features (optional)</div>
+                <input type="password" id="ai-api-key" placeholder="sk-..." style="margin-top:4px" />
+              </label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button class="btn" id="save-api-key">Save API Key</button>
+                <button class="btn secondary" id="clear-api-key">Clear</button>
+                <span id="api-key-saved" class="muted-sm" style="display:none">Settings saved!</span>
+              </div>
+              <div class="muted-sm">
+                Without an API key, the scheduler will use local heuristics to suggest meeting times and analyze your schedule.
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right column -->
+      <aside class="side" aria-label="Sidebar" style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <h4 style="margin:0">AI Assistant</h4>
+          <div class="small muted-sm" style="margin-top:8px">Simulated AI helps prioritize and schedule meetings.</div>
+          <div style="margin-top:10px;display:flex;gap:8px">
+              <select id="ai-tone"><option value="balanced">Balanced</option><option value="direct">Direct</option><option value="supportive">Supportive</option></select>
+              <button class="btn" id="ai-analyze">Analyze Schedule</button>
+              <button class="btn" id="ai-suggest">Suggest</button>
+              <button class="btn" id="ai-suggest-times">Suggest Times</button>
+          </div>
+          <div id="ai-output" class="muted-sm" style="margin-top:10px;max-height:200px;overflow:auto"></div>
+        </div>
+
+        <div class="card">
+          <h4 style="margin:0">Quick Contacts</h4>
+          <div id="quick-contacts" style="margin-top:8px;display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+
+        <div class="card">
+          <h4 style="margin:0">Email Preview</h4>
+          <div id="email-preview" class="email-preview">Select a template and contact to preview generated emails.</div>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn" id="btn-send-mock">Generate Request</button>
+            <button class="btn secondary" id="btn-mark-sent">Mark Sent</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer style="text-align:center;color:var(--muted);padding:14px 0">Founder Scheduler — Offline demo • Data stored locally in your browser</footer>
+  </div>
+
+  <!-- Hidden forms / modals (simple inline panels) -->
+  <div id="task-form" style="display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;padding:16px;background:var(--card);border-radius:12px;box-shadow:var(--shadow);width:min(680px,94%);">
+    <h3 style="margin:0">New / Edit Task</h3>
+    <div style="display:grid;grid-template-columns:1fr 140px;gap:8px;margin-top:8px">
+      <input id="t-title" placeholder="Task title" />
+      <select id="t-priority">
+        <option value="high">High</option>
+        <option value="med" selected>Medium</option>
+        <option value="low">Low</option>
+      </select>
+      <input id="t-deadline" type="date" />
+      <input id="t-estimate" type="number" placeholder="Estimate (mins)" value="60" />
+      <textarea id="t-notes" placeholder="Notes / context"></textarea>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn" id="t-save">Save</button>
+        <button class="btn secondary" id="t-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="contact-form" style="display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;padding:16px;background:var(--card);border-radius:12px;box-shadow:var(--shadow);width:min(640px,94%);">
+    <h3 style="margin:0">New / Edit Contact</h3>
+    <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <input id="c-name" placeholder="Full name" />
+      <input id="c-company" placeholder="Company / firm" />
+      <input id="c-email" placeholder="Email" />
+      <input id="c-role" placeholder="Role (Investor / Mentor)" />
+      <textarea id="c-notes" placeholder="Notes"></textarea>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn" id="c-save">Save</button>
+        <button class="btn secondary" id="c-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="template-form" style="display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;padding:16px;background:var(--card);border-radius:12px;box-shadow:var(--shadow);width:min(720px,96%);">
+    <h3 style="margin:0">New / Edit Template</h3>
+    <div style="margin-top:8px;display:grid;gap:8px">
+      <input id="tmpl-title" placeholder="Template title (e.g., Intro - Investor)" />
+      <input id="tmpl-subject" placeholder="Subject line" />
+      <textarea id="tmpl-body" placeholder="Email body — use {name}, {company}, {startup}, {date}, {time}"></textarea>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn" id="tmpl-save">Save</button>
+        <button class="btn secondary" id="tmpl-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+      // --- API Configuration (use environment variables in production) ---
+      const API_CONFIG = {
+          openai: {
+              apiKey: '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',
+              endpoint: 'https://api.openai.com/v1/chat/completions'
+          },
+          // ✅ FREE ALTERNATIVE: Google Gemini
+          gemini: {
+              apiKey: 'AIzaSyAHseiMaMIIKsXPU7i1o6zNqh0DZNilMSQ', // Example - get your free key
+              endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent'
+          }
+      };
+
+      // --- Storage keys & models ---
+      const KEY = 'fs_data_v1';
+      const DEFAULTS = {
+        tasks: [],
+        events: [],
+        contacts: [],
+        templates: [],
+        settings: {workStart:9, workEnd:18, bufferMins:15}
+      };
+      let state = loadState();
+
+      // --- Utilities ---
+      function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+      function qs(sel){ return document.querySelector(sel); }
+      function qsa(sel){ return Array.from(document.querySelectorAll(sel)); }
+      function fmtDateISO(d){ if(!d) return ''; const dt = new Date(d); return dt.toISOString().slice(0,10); }
+      function fmtTime(dt){ if(!dt) return ''; const d = new Date(dt); return d.toTimeString().slice(0,5); }
+      function dateToYMD(d){ return new Date(d).toISOString().slice(0,10); }
+      function toLocalDateString(d){ return new Date(d).toLocaleString(); }
+      function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
+
+      // Save/load
+      function saveState(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+      function loadState(){ try{ const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(DEFAULTS)); }catch(e){ return JSON.parse(JSON.stringify(DEFAULTS)); } }
+
+      // --- Seed example data if empty ---
+      if(state.contacts.length === 0){
+        state.contacts.push({id:uid('c'),name:'Ava Morgan',company:'GreenBridge Capital',email:'ava@greenbridge.vc',role:'Investor',notes:'Seed investor interested in SaaS.'});
+        state.contacts.push({id:uid('c'),name:'Daniel Park',company:'LaunchClub',email:'daniel@launchclub.co',role:'Advisor',notes:'Mentor for GTM.'});
+      }
+      if(state.templates.length === 0){
+        state.templates.push({id:uid('t'),title:'Investor Intro',subject:'Intro & meeting request — {startup}',body:'Hi {name},\n\nI’m the founder of {startup} and we are building X to solve Y. We’ve achieved {notes} and I’d love 20 minutes to share our progress and ask for feedback.\n\nAre you available on {date} at {time}? I can adapt to your schedule.\n\nBest,\n{you}'}); 
+        state.templates.push({id:uid('t'),title:'Follow-up Email',subject:'Thanks — follow-up & materials',body:'Hi {name},\n\nThanks for your time today. As discussed, here are the materials: {link}\n\nNext steps: {next}\n\nBest,\n{you}'});
+      }
+      if(state.tasks.length === 0){
+        state.tasks.push({id:uid('tsk'),title:'Prepare 1-slide summary',priority:'high',estimate:60,deadline:null,notes:'Key traction and ask',progress:0,createdAt:new Date().toISOString()});
+        state.tasks.push({id:uid('tsk'),title:'Find 10 investor targets',priority:'med',estimate:180,deadline:null,notes:'Use Crunchbase / warm intros',progress:0,createdAt:new Date().toISOString()});
+      }
+      saveState();
+
+      // --- DOM binding & initial render ---
+      const tabs = qsa('.tab');
+      tabs.forEach(t => t.addEventListener('click', ()=> showPage(t.getAttribute('data-target'))));
+
+      function showPage(name){
+        qsa('.page').forEach(p => p.classList.toggle('active', p.id === name));
+        tabs.forEach(tb => tb.setAttribute('aria-selected', tb.getAttribute('data-target') === name ? 'true' : 'false'));
+        // small accessibility focus
+        const active = qs('.page.active');
+        if(active) active.scrollIntoView({behavior:'smooth', block:'start'});
+        renderAll();
+      }
+
+      // Renderers
+      function renderAll(){
+        renderStats();
+        renderTasks();
+        renderContacts();
+        renderTemplates();
+        renderCalendar(); // calendar uses events/tasks
+        renderQuickContacts();
+        renderUpcoming();
+        renderEventContactOptions();
+        renderAIOutput('Ready.');
+      }
+
+      function renderStats(){
+        qs('#stat-tasks').textContent = state.tasks.length;
+        qs('#stat-events').textContent = state.events.length;
+        qs('#stat-contacts').textContent = state.contacts.length;
+      }
+
+      // TASKS
+      const taskListEl = qs('#task-list');
+      function priorityClass(p){ return p === 'high' ? 'high' : (p === 'med' ? 'med' : 'low'); }
+      function renderTasks(filterPriority=''){
+        taskListEl.innerHTML = '';
+        const tasks = state.tasks.filter(t => !filterPriority || t.priority === filterPriority);
+        tasks.forEach(t => {
+          const el = document.createElement('div');
+          el.className = 'task';
+          el.draggable = true;
+          el.dataset.id = t.id;
+          el.innerHTML = `<div style="flex:1">
+                            <div class="title">${escapeHtml(t.title)}</div>
+                            <div class="meta">${t.estimate} mins • ${t.deadline ? 'due '+t.deadline : 'no deadline'}</div>
+                          </div>
+                          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+                            <div class="pill ${priorityClass(t.priority)}">${t.priority.toUpperCase()}</div>
+                            <div style="display:flex;gap:6px">
+                              <button class="btn secondary small" data-action="edit" data-id="${t.id}">Edit</button>
+                              <button class="btn secondary small" data-action="del" data-id="${t.id}">Delete</button>
+                            </div>
+                          </div>`;
+          // Drag handlers
+          el.addEventListener('dragstart', (e)=>{
+            el.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', JSON.stringify({type:'task',id:t.id}));
+            e.dataTransfer.effectAllowed = 'move';
+          });
+          el.addEventListener('dragend', ()=> el.classList.remove('dragging'));
+          // Action buttons
+          el.querySelectorAll('[data-action]').forEach(btn=>{
+            btn.addEventListener('click', (ev)=>{
+              const aid = btn.getAttribute('data-action');
+              const id = btn.getAttribute('data-id');
+              if(aid === 'edit') openTaskForm(id);
+              if(aid === 'del'){ if(confirm('Delete task?')) { state.tasks = state.tasks.filter(x=>x.id!==id); saveState(); renderAll(); } }
+            });
+          });
+          taskListEl.appendChild(el);
+        });
+      }
+
+      qs('#filter-priority').addEventListener('change', (e)=> renderTasks(e.target.value));
+      qs('#open-task-form').addEventListener('click', ()=> openTaskForm());
+
+      // Task form
+      let editingTaskId = null;
+      function openTaskForm(id){
+        editingTaskId = id || null;
+        const panel = qs('#task-form');
+        panel.style.display = 'block';
+        if(id){
+          const t = state.tasks.find(x=>x.id===id);
+          if(t){
+            qs('#t-title').value = t.title;
+            qs('#t-priority').value = t.priority;
+            qs('#t-deadline').value = t.deadline || '';
+            qs('#t-estimate').value = t.estimate || 60;
+            qs('#t-notes').value = t.notes || '';
+          }
+        } else {
+          qs('#t-title').value = '';
+          qs('#t-deadline').value = '';
+          qs('#t-estimate').value = 60;
+          qs('#t-notes').value = '';
+          qs('#t-priority').value = 'med';
+        }
+      }
+      qs('#t-cancel').addEventListener('click', ()=> qs('#task-form').style.display = 'none');
+      qs('#t-save').addEventListener('click', ()=>{
+        const title = qs('#t-title').value.trim();
+        if(!title){ alert('Title required'); return; }
+        const p = qs('#t-priority').value;
+        const d = qs('#t-deadline').value || null;
+        const est = parseInt(qs('#t-estimate').value) || 60;
+        const notes = qs('#t-notes').value;
+        if(editingTaskId){
+          const t = state.tasks.find(x=>x.id===editingTaskId);
+          Object.assign(t,{title,p: p,priority:p,deadline:d,estimate:est,notes:notes});
+        } else {
+          state.tasks.unshift({id:uid('tsk'),title,priority:p,deadline:d,estimate:est,notes,progress:0,createdAt:new Date().toISOString()});
+        }
+        saveState();
+        qs('#task-form').style.display = 'none';
+        renderAll();
+      });
+
+      // CONTACTS
+      function renderContacts(){
+        const list = qs('#contacts-list');
+        list.innerHTML = '';
+        state.contacts.forEach(c=>{
+          const el = document.createElement('div');
+          el.className = 'contact';
+          el.innerHTML = `<div class="avatar">${escapeHtml(c.name ? c.name.split(' ')[0].slice(0,2).toUpperCase() : 'C')}</div>
+                          <div style="flex:1">
+                            <div style="display:flex;justify-content:space-between">
+                              <div><strong>${escapeHtml(c.name)}</strong> <span class="muted-sm">• ${escapeHtml(c.company || '')}</span></div>
+                              <div class="muted-sm">${escapeHtml(c.role || '')}</div>
+                            </div>
+                            <div class="small">${escapeHtml(c.email || '')} • ${escapeHtml(c.notes || '')}</div>
+                          </div>
+                          <div style="display:flex;flex-direction:column;gap:6px">
+                            <button class="btn secondary" data-act="email" data-id="${c.id}">Email</button>
+                            <button class="btn" data-act="edit" data-id="${c.id}">Edit</button>
+                          </div>`;
+          el.querySelectorAll('[data-act]').forEach(b=>{
+            b.addEventListener('click', ()=>{
+              const act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
+              if(act === 'edit') openContactForm(id);
+              if(act === 'email') { openEmailForContact(id); showPage('templates'); }
+            });
+          });
+          list.appendChild(el);
+        });
+      }
+
+      qs('#btn-new-contact').addEventListener('click', ()=> openContactForm());
+      let editingContactId = null;
+      function openContactForm(id){
+        editingContactId = id || null;
+        const p = qs('#contact-form'); p.style.display = 'block';
+        if(id){
+          const c = state.contacts.find(x=>x.id===id);
+          if(c){ qs('#c-name').value = c.name; qs('#c-company').value = c.company; qs('#c-email').value = c.email; qs('#c-role').value = c.role; qs('#c-notes').value = c.notes; }
+        } else { qs('#c-name').value='';qs('#c-company').value='';qs('#c-email').value='';qs('#c-role').value='';qs('#c-notes').value=''; }
+      }
+      qs('#c-cancel').addEventListener('click', ()=> qs('#contact-form').style.display = 'none');
+      qs('#c-save').addEventListener('click', ()=>{
+        const n=qs('#c-name').value.trim(); if(!n){ alert('Name required'); return; }
+        const rec = {name:n,company:qs('#c-company').value.trim(),email:qs('#c-email').value.trim(),role:qs('#c-role').value.trim(),notes:qs('#c-notes').value.trim()};
+        if(editingContactId){ const idx=state.contacts.findIndex(x=>x.id===editingContactId); Object.assign(state.contacts[idx],rec); }
+        else state.contacts.unshift(Object.assign({id:uid('c')},rec));
+        saveState(); qs('#contact-form').style.display='none'; renderAll();
+      });
+
+      // TEMPLATES
+      function renderTemplates(){
+        const el = qs('#templates-list'); el.innerHTML='';
+        state.templates.forEach(t=>{
+          const row = document.createElement('div'); row.className='template';
+          row.innerHTML = `<div style="flex:1">
+                             <div style="font-weight:700">${escapeHtml(t.title)} <span class="muted-sm">• ${escapeHtml(t.subject)}</span></div>
+                             <div class="muted-sm" style="margin-top:6px">${escapeHtml(t.body.slice(0,120))}${t.body.length>120?'...':''}</div>
+                           </div>
+                           <div style="display:flex;flex-direction:column;gap:6px">
+                             <button class="btn secondary" data-act="preview" data-id="${t.id}">Preview</button>
+                             <button class="btn" data-act="edit" data-id="${t.id}">Edit</button>
+                           </div>`;
+          row.querySelectorAll('[data-act]').forEach(b => {
+            b.addEventListener('click', ()=> {
+              const a = b.getAttribute('data-act'), id=b.getAttribute('data-id');
+              if(a==='preview'){ previewTemplate(id); showPage('templates'); }
+              if(a==='edit'){ openTemplateForm(id); }
+            });
+          });
+          el.appendChild(row);
+        });
+      }
+      qs('#btn-new-template').addEventListener('click', ()=> openTemplateForm());
+      let editingTemplateId = null;
+      function openTemplateForm(id){
+        editingTemplateId = id || null;
+        qs('#template-form').style.display='block';
+        if(id){
+          const t = state.templates.find(x=>x.id===id);
+          qs('#tmpl-title').value = t.title; qs('#tmpl-subject').value = t.subject; qs('#tmpl-body').value = t.body;
+        } else { qs('#tmpl-title').value='';qs('#tmpl-subject').value='';qs('#tmpl-body').value=''; }
+      }
+      qs('#tmpl-cancel').addEventListener('click', ()=> qs('#template-form').style.display='none');
+      qs('#tmpl-save').addEventListener('click', ()=>{
+        const title=qs('#tmpl-title').value.trim(); if(!title){ alert('Title needed'); return; }
+        const subj=qs('#tmpl-subject').value.trim(); const body=qs('#tmpl-body').value;
+        if(editingTemplateId){ Object.assign(state.templates.find(x=>x.id===editingTemplateId),{title: title,subject:subj,body:body}); }
+        else state.templates.unshift({id:uid('t'),title: title,subject:subj,body:body});
+        saveState(); qs('#template-form').style.display='none'; renderAll();
+      });
+
+      function previewTemplate(id){
+        const t = state.templates.find(x=>x.id===id);
+        if(!t) return;
+        qs('#email-preview').textContent = t.body;
+      }
+
+      // Event contact options
+      function renderEventContactOptions(){
+        const sel = qs('#ev-contact'); sel.innerHTML = '<option value="">No contact</option>';
+        state.contacts.forEach(c => {
+          const opt = document.createElement('option'); opt.value = c.id; opt.textContent = c.name + (c.company ? ' • '+c.company : '');
+          sel.appendChild(opt);
+        });
+      }
+
+      // EVENTS (calendar)
+      function createEvent(title, dateStr, startTime, duration, contactId, meta = {}){
+        const date = new Date(dateStr + 'T' + startTime);
+        const end = new Date(date.getTime() + (duration*60000));
+        const ev = {id:uid('ev'), title, date: date.toISOString(), end: end.toISOString(), contactId: contactId || null, meta};
+        // conflict detection
+        const conflict = checkConflict(ev);
+        if(conflict) return {ok:false,conflict};
+        state.events.push(ev); saveState(); renderAll(); return {ok:true,ev};
+      }
+
+      // check overlap - returns overlapping event or null
+      function checkConflict(newEv){
+        const s = new Date(newEv.date).getTime(), e = new Date(newEv.end).getTime();
+        for(const ev of state.events){
+          const os = new Date(ev.date).getTime(), oe = new Date(ev.end).getTime();
+          if(Math.max(s,os) < Math.min(e,oe)) return ev;
+        }
+        return null;
+      }
+
+      // calendar rendering (week/day/month)
+      let calView = 'week';
+      let calAnchor = new Date(); // current week/day anchor
+      qs('#cal-view').addEventListener('change', (e)=> { calView = e.target.value; renderCalendar(); });
+      qs('#cal-next').addEventListener('click', ()=> { shiftCal(1); });
+      qs('#cal-prev').addEventListener('click', ()=> { shiftCal(-1); });
+      qs('#cal-today').addEventListener('click', ()=> { calAnchor = new Date(); renderCalendar(); });
+
+      function shiftCal(delta){
+        if(calView==='month'){ calAnchor.setMonth(calAnchor.getMonth()+delta); }
+        else if(calView==='week'){ calAnchor.setDate(calAnchor.getDate() + (7*delta)); }
+        else { calAnchor.setDate(calAnchor.getDate() + delta); }
+        renderCalendar();
+      }
+
+      function startOfWeek(d){
+        const copy = new Date(d); const day = copy.getDay(); const diff = copy.getDate() - day + (day===0 ? -6 : 1); copy.setDate(diff); copy.setHours(0,0,0,0); return copy;
+      }
+
+      function renderCalendar(){
+        const area = qs('#calendar-area'); area.innerHTML = '';
+        // allow scrolling when calendar is tall
+        area.style.overflow = 'auto';
+        if(calView === 'month') renderMonth(area);
+        else if(calView === 'day') renderDay(area);
+        else renderWeek(area);
+      }
+
+      function renderMonth(area){
+        const d = new Date(calAnchor); d.setDate(1);
+        const start = new Date(d); start.setDate(1); const startDay = start.getDay(); // 0-6
+        // find grid start Monday
+        let gridStart = new Date(start);
+        gridStart.setDate(gridStart.getDate() - ((gridStart.getDay()+6)%7));
+        const grid = document.createElement('div'); grid.className='cal';
+        for(let i=0;i<42;i++){
+          const day = new Date(gridStart); day.setDate(gridStart.getDate()+i);
+          const cell = document.createElement('div'); cell.className='day card';
+          const header = document.createElement('div'); header.className='day-header'; header.innerHTML = `<div>${day.getDate()}</div><div class="small">${day.toLocaleDateString(undefined,{weekday:'short'})}</div>`;
+          cell.appendChild(header);
+          // events on that day
+          const dayEvents = state.events.filter(ev => (new Date(ev.date)).toDateString() === day.toDateString());
+          dayEvents.forEach(ev => {
+            const evt = document.createElement('div'); evt.className='event'; evt.textContent = ev.title + (ev.contactId ? ' • ' + (state.contacts.find(c=>c.id===ev.contactId)?.name||'') : '');
+            evt.addEventListener('click', ()=> alert('Event: '+ev.title+'\n'+toLocalDateString(ev.date)));
+            cell.appendChild(evt);
+          });
+          // allow drop of tasks
+          cell.addEventListener('dragover', (e)=> e.preventDefault());
+          cell.addEventListener('drop', (e)=> {
+            e.preventDefault();
+            try{
+              const dta = JSON.parse(e.dataTransfer.getData('text/plain'));
+              if(dta.type === 'task'){ handleTaskDropOnDay(dta.id, day); }
+            }catch(err){}
+          });
+          grid.appendChild(cell);
+        }
+        area.appendChild(grid);
+      }
+
+      function renderDay(area){
+        const day = new Date(calAnchor); day.setHours(0,0,0,0);
+        const title = document.createElement('div'); title.className='muted-sm'; title.textContent = day.toLocaleDateString(); area.appendChild(title);
+        const col = document.createElement('div'); col.className='calendar-column';
+        // we'll absolutely position event blocks inside this column
+        col.style.position = 'relative';
+        const SLOT_H = 42; // px height per hour slot (matches CSS)
+
+        // create hour slots (visual rows)
+        for(let h=state.settings.workStart; h<state.settings.workEnd; h++){
+          const slot = document.createElement('div'); slot.className='time-slot'; slot.style.display='flex'; slot.style.alignItems='center'; slot.style.justifyContent='space-between';
+          slot.style.height = SLOT_H + 'px';
+          const label = document.createElement('div'); label.className='time-label'; label.textContent = `${String(h).padStart(2,'0')}:00`;
+          const dropArea = document.createElement('div'); dropArea.style.flex='1'; dropArea.style.padding='6px';
+          dropArea.addEventListener('dragover', (e)=> e.preventDefault());
+          dropArea.addEventListener('drop', (e)=> { e.preventDefault(); try{ const dta=JSON.parse(e.dataTransfer.getData('text/plain')); if(dta.type==='task'){ handleTaskDropOnTime(dta.id, new Date(day.getFullYear(),day.getMonth(),day.getDate(),h,0)); } }catch(_){} });
+          slot.appendChild(label); slot.appendChild(dropArea);
+          col.appendChild(slot);
+        }
+
+  // events for that day - position them according to start time & duration
+        const evs = state.events.filter(ev => new Date(ev.date).toDateString() === day.toDateString());
+        // header offset (day header height + margin)
+        const HEADER_H = 44 + 6; // matches .day-header height + margin-bottom
+        evs.forEach(ev=>{
+          const start = new Date(ev.date);
+          const end = new Date(ev.end);
+          const durationMins = Math.max(15, Math.round((end.getTime() - start.getTime())/60000));
+          const topPx = HEADER_H + ((start.getHours() - state.settings.workStart) * SLOT_H) + (start.getMinutes() / 60) * SLOT_H;
+          const heightPx = Math.max(24, (durationMins / 60) * SLOT_H);
+
+          const block = document.createElement('div'); block.className='time-block';
+          block.style.position = 'absolute';
+          block.style.left = '6px';
+          block.style.right = '6px';
+          block.style.top = topPx + 'px';
+          block.style.height = heightPx + 'px';
+          block.style.overflow = 'hidden';
+          block.style.padding = '6px';
+          block.style.boxSizing = 'border-box';
+          block.textContent = `${fmtTime(ev.date)} • ${ev.title} ${ev.contactId ? '• ' + (state.contacts.find(c=>c.id===ev.contactId)?.name||'') : ''}`;
+          block.addEventListener('click', ()=> {
+            if(confirm('Remove this event?')){ state.events = state.events.filter(x=>x.id!==ev.id); saveState(); renderAll(); }
+          });
+          col.appendChild(block);
+        });
+
+        // ensure column is tall enough to show all slots/events
+        const totalH = HEADER_H + SLOT_H * (state.settings.workEnd - state.settings.workStart);
+        col.style.minHeight = totalH + 'px';
+        col.style.height = Math.max(totalH, 520) + 'px';
+        area.appendChild(col);
+      }
+
+      function renderWeek(area){
+        const weekStart = startOfWeek(calAnchor);
+        const header = document.createElement('div'); header.style.display='flex'; header.style.gap='6px';
+        const grid = document.createElement('div'); grid.className='week-view';
+        // time labels column
+        const tl = document.createElement('div'); tl.className='card'; tl.style.padding='6px';
+        // spacer to align time labels with day headers
+        const spacer = document.createElement('div');
+        spacer.className = 'day-header';
+        spacer.style.visibility = 'hidden';
+        spacer.style.marginBottom = '6px';
+        tl.appendChild(spacer);
+        for(let h=state.settings.workStart; h<state.settings.workEnd; h++){
+          const t = document.createElement('div'); t.className='time-label'; t.style.height='42px'; t.textContent = `${String(h).padStart(2,'0')}:00`;
+          tl.appendChild(t);
+        }
+        grid.appendChild(tl);
+
+        const SLOT_H = 42;
+        for(let d=0; d<7; d++){
+          const day = new Date(weekStart); day.setDate(weekStart.getDate()+d);
+          const col = document.createElement('div'); col.className='calendar-column';
+          col.style.position = 'relative';
+          const hd = document.createElement('div'); hd.className='day-header'; hd.style.marginBottom='6px'; hd.innerHTML = `<div style="font-weight:700">${day.toLocaleDateString(undefined,{weekday:'short'})}</div><div class="muted-sm">${day.toLocaleDateString()}</div>`;
+          col.appendChild(hd);
+          // slots (visual rows)
+          for(let h=state.settings.workStart; h<state.settings.workEnd; h++){
+            const slot = document.createElement('div'); slot.className='time-slot'; slot.dataset.time = new Date(day.getFullYear(),day.getMonth(),day.getDate(),h,0).toISOString();
+            slot.style.height = SLOT_H + 'px';
+            slot.addEventListener('dragover', e=> e.preventDefault());
+            slot.addEventListener('drop', e => { e.preventDefault(); try{ const dta=JSON.parse(e.dataTransfer.getData('text/plain')); if(dta.type==='task'){ handleTaskDropOnTime(dta.id, new Date(slot.dataset.time)); } }catch(_){} });
+            col.appendChild(slot);
+          }
+          // events positioned within column
+          const dayEvents = state.events.filter(ev => new Date(ev.date).toDateString() === day.toDateString());
+          const HEADER_H = 44 + 6; // header height + margin-bottom
+          dayEvents.forEach(ev => {
+            const start = new Date(ev.date);
+            const end = new Date(ev.end);
+            const durationMins = Math.max(15, Math.round((end.getTime() - start.getTime())/60000));
+            const topPx = HEADER_H + ((start.getHours() - state.settings.workStart) * SLOT_H) + (start.getMinutes() / 60) * SLOT_H;
+            const heightPx = Math.max(24, (durationMins / 60) * SLOT_H);
+
+            const evEl = document.createElement('div'); evEl.className='time-block';
+            evEl.style.position = 'absolute';
+            evEl.style.left = '6px';
+            evEl.style.right = '6px';
+            evEl.style.top = topPx + 'px';
+            evEl.style.height = heightPx + 'px';
+            evEl.textContent = `${fmtTime(ev.date)} • ${ev.title}`;
+            evEl.addEventListener('click', ()=> {
+              if(confirm('Remove this event?')){ state.events = state.events.filter(x=>x.id!==ev.id); saveState(); renderAll(); }
+            });
+            col.appendChild(evEl);
+          });
+          // ensure column height matches number of slots so events don't overflow
+          const totalHcol = HEADER_H + SLOT_H * (state.settings.workEnd - state.settings.workStart);
+          col.style.minHeight = totalHcol + 'px';
+          col.style.height = Math.max(totalHcol, 520) + 'px';
+          grid.appendChild(col);
+        }
+        area.appendChild(grid);
+      }
+
+      // Handle task drop on day (default time)
+      function handleTaskDropOnDay(taskId, day){
+        const t = state.tasks.find(x=>x.id===taskId);
+        if(!t) return;
+        const suggested = suggestTimesForTask(t, day);
+        if(suggested && suggested.length>0){
+          const s = suggested[0];
+          const res = createEvent(t.title, s.dateStr, s.timeStr, Math.max(30, Math.round(t.estimate)), null, {fromTask: taskId});
+          if(!res.ok) alert('Conflict with existing event. Try another slot.');
+          else {
+            logDashboard('Scheduled "'+t.title+'" on '+s.dateStr+' '+s.timeStr);
+            renderAll();
+          }
+        } else alert('No available slot found on that day.');
+      }
+      // Handle task drop on specific time
+      function handleTaskDropOnTime(taskId, date){
+        const t = state.tasks.find(x=>x.id===taskId);
+        if(!t) return;
+        const dateStr = date.toISOString().slice(0,10);
+        const timeStr = date.toTimeString().slice(0,5);
+        const res = createEvent(t.title, dateStr, timeStr, Math.max(30, Math.round(t.estimate)), null, {fromTask: taskId});
+        if(!res.ok) alert('Conflict detected.'); else { logDashboard('Scheduled '+t.title+' at '+dateStr+' '+timeStr); renderAll(); }
+      }
+
+      // AI scheduling helpers (simulated)
+      function suggestTimesForTask(task, forDate){
+        // returns array of candidate slots on that date: {dateStr, timeStr}
+        const candidates=[];
+        const workStart = state.settings.workStart, workEnd = state.settings.workEnd;
+        for(let h=workStart; h<workEnd; h++){
+          const attempt = new Date(forDate.getFullYear(),forDate.getMonth(),forDate.getDate(),h,0);
+          // build event object for conflict check
+          const ev = {id:'tmp', date: attempt.toISOString(), end: new Date(attempt.getTime() + task.estimate*60000).toISOString()};
+          if(!checkConflict(ev)){
+            // enforce buffer before/after
+            let ok=true;
+            const buf = state.settings.bufferMins*60000;
+            for(const existing of state.events){
+              const es = new Date(existing.date).getTime(), ee = new Date(existing.end).getTime();
+              const ns = new Date(ev.date).getTime(), ne = new Date(ev.end).getTime();
+              if(Math.max(ns-buf,es) < Math.min(ne+buf,ee)) { ok=false; break; }
+            }
+            if(ok) candidates.push({dateStr: attempt.toISOString().slice(0,10), timeStr: attempt.toTimeString().slice(0,5)});
+          }
+        }
+        return candidates;
+      }
+
+      // Auto-schedule tasks (simple greedy algorithm respecting priority)
+      qs('#btn-auto-schedule').addEventListener('click', ()=> {
+        let unscheduled = state.tasks.filter(t => {
+          // if task already has an event (meta.fromTask) skip
+          return !state.events.some(e => e.meta && e.meta.fromTask === t.id);
+        });
+        // sort by priority + deadline
+        unscheduled.sort((a,b)=>{
+          const prio = {'high':3,'med':2,'low':1};
+          if(prio[b.priority] !== prio[a.priority]) return prio[b.priority]-prio[a.priority];
+          if(a.deadline && b.deadline) return new Date(a.deadline)-new Date(b.deadline);
+          return new Date(a.createdAt)-new Date(b.createdAt);
+        });
+        const anchor = new Date();
+        let scheduled=0;
+        for(const t of unscheduled){
+          // try next 14 days
+          for(let dayOffset=0; dayOffset<21; dayOffset++){
+            const d = new Date(anchor); d.setDate(anchor.getDate()+dayOffset);
+            const slots = suggestTimesForTask(t,d);
+            if(slots.length>0){
+              const s = slots[0];
+              createEvent(t.title, s.dateStr, s.timeStr, Math.max(30,Math.round(t.estimate)), null, {fromTask:t.id, autoScheduled:true});
+              scheduled++; break;
+            }
+          }
+        }
+        saveState(); renderAll(); logDashboard('Auto-scheduled '+scheduled+' tasks.');
+      });
+
+      // Batch invite: schedule meetings with investor contacts (simple demo)
+      qs('#btn-batch-invite').addEventListener('click', ()=>{
+        // select investor contacts
+        const inv = state.contacts.filter(c => (c.role || '').toLowerCase().includes('invest'));
+        if(inv.length===0){ alert('No investor contacts found (role contains "invest").'); return; }
+        // attempt to schedule 1:1 meetings next week
+        let scheduled = 0;
+        const anchor = new Date(); anchor.setDate(anchor.getDate()+1);
+        for(const c of inv.slice(0,8)){
+          // find a slot in the next 14 days
+          let ok=false;
+          for(let offset=1; offset<15; offset++){
+            const d = new Date(anchor); d.setDate(anchor.getDate()+offset);
+            const slots = suggestTimesForTask({estimate:30}, d);
+            if(slots.length>0){
+              const s = slots[0];
+              // create event with contact
+              createEvent('Intro: '+c.name, s.dateStr, s.timeStr, 30, c.id, {autoBatch:true});
+              // prepare email with template
+              const em = generateEmailForContact(c, 'Investor Intro', {date: s.dateStr, time: s.timeStr});
+              // mark as sent false for tracking
+              scheduled++; ok=true; break;
+            }
+          }
+          if(!ok) continue;
+        }
+        renderAll(); logDashboard('Scheduled '+scheduled+' investor meetings (mock).');
+      });
+
+      // EVENTS editor controls
+      qs('#ev-create').addEventListener('click', ()=>{
+        const title = qs('#ev-title').value.trim() || 'Meeting';
+        const date = qs('#ev-date').value;
+        const start = qs('#ev-start').value;
+        const dur = parseInt(qs('#ev-duration').value) || 30;
+        const contactId = qs('#ev-contact').value || null;
+        if(!date || !start){ alert('Date and start time required'); return; }
+        const res = createEvent(title,date,start,dur,contactId);
+        if(!res.ok){ alert('Conflict with event: '+res.conflict.title); return; }
+        qs('#ev-title').value=''; qs('#ev-date').value=''; qs('#ev-start').value=''; qs('#ev-duration').value='30';
+        logDashboard('Created event: '+title+' '+date+' '+start);
+      });
+      qs('#ev-clear').addEventListener('click', ()=> { qs('#ev-title').value='';qs('#ev-date').value='';qs('#ev-start').value=''; qs('#ev-duration').value='30'; });
+
+      // Quick contacts (sidebar)
+      function renderQuickContacts(){
+        const el = qs('#quick-contacts'); el.innerHTML='';
+        state.contacts.slice(0,6).forEach(c=>{
+          const btn = document.createElement('button'); btn.className='btn secondary'; btn.style.justifyContent='flex-start'; btn.textContent = c.name;
+          btn.addEventListener('click', ()=> openEmailForContact(c.id));
+          el.appendChild(btn);
+        });
+      }
+
+      // Email generation (templates with placeholders)
+      function fillTemplate(templateBody, contact, extra = {}){
+        let out = templateBody || '';
+        const fill = Object.assign({
+          name: contact?.name || '',
+          company: contact?.company || '',
+          startup: extra.startup || 'MyStartup',
+          date: extra.date || '',
+          time: extra.time || '',
+          notes: extra.notes || '',
+          link: extra.link || '',
+          you: extra.you || 'Founder'
+        }, extra);
+        out = out.replace(/\{name\}/g, fill.name).replace(/\{company\}/g, fill.company).replace(/\{startup\}/g, fill.startup).replace(/\{date\}/g, fill.date).replace(/\{time\}/g, fill.time).replace(/\{notes\}/g, fill.notes).replace(/\{link\}/g, fill.link).replace(/\{you\}/g, fill.you);
+        return out;
+      }
+
+      function generateEmailForContact(contact, templateTitleOrId, extra = {}){
+        let tmpl = state.templates.find(t => t.id === templateTitleOrId || t.title === templateTitleOrId) || state.templates[0];
+        if(!tmpl) return null;
+        const body = fillTemplate(tmpl.body, contact, extra);
+        const subject = fillTemplate(tmpl.subject || tmpl.title, contact, extra);
+        qs('#email-preview').textContent = 'To: '+(contact?.email||'') + '\nSubject: ' + subject + '\n\n' + body;
+        return {to:contact?.email,subject,body};
+      }
+
+      function openEmailForContact(contactId){
+        const contact = state.contacts.find(c=>c.id===contactId);
+        if(!contact) return;
+        // choose an investor template if exists
+        const candidate = state.templates.find(t => t.title.toLowerCase().includes('invest') || t.title.toLowerCase().includes('intro')) || state.templates[0];
+        generateEmailForContact(contact, candidate.id, {you: 'Founder', startup: 'MyStartup', notes: contact.notes});
+        showPage('templates');
+      }
+
+      // AI assistant (simulated)
+      qs('#ai-suggest').addEventListener('click', ()=> {
+        const tone = qs('#ai-tone').value;
+        const out = suggestNextActions(tone);
+        renderAIOutput(out);
+      });
+
+      function renderAIOutput(html){
+        qs('#ai-output').textContent = html;
+      }
+
+      async function suggestNextActions(tone) {
+        try {
+            const analysis = await schedulerAgent.analyzeSchedule(state, 'optimize');
+            return analysis;
+        } catch (error) {
+            return getFallbackSuggestions(tone);
+        }
+      }
+
+      function suggestTopSlots(limit=3){
+        // scan next 7 days for free slots and return top limited ones
+        const found=[];
+        const now = new Date();
+        for(let offset=0; offset<14 && found.length < limit; offset++){
+          const d = new Date(now); d.setDate(now.getDate()+offset);
+          for(let h=state.settings.workStart; h<state.settings.workEnd; h++){
+            if(found.length>=limit) break;
+            const attempt = new Date(d.getFullYear(),d.getMonth(),d.getDate(),h,0);
+            // conflict?
+            const ev = {date: attempt.toISOString(), end: new Date(attempt.getTime()+30*60000).toISOString()};
+            if(!checkConflict(ev)) found.push({date: attempt.toISOString().slice(0,10), time: attempt.toTimeString().slice(0,5)});
+          }
+        }
+        return found;
+      }
+
+      // Dashboard logs & upcoming
+      function logDashboard(msg){
+        const el = qs('#dashboard-log');
+        el.textContent = (new Date().toLocaleTimeString()) + ' — ' + msg;
+      }
+      function renderUpcoming(){
+        const up = state.events.slice().sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,6);
+        const el = qs('#upcoming-list');
+        if(up.length===0){ el.textContent = 'No upcoming events.'; return; }
+        el.innerHTML = up.map(ev=>`${new Date(ev.date).toLocaleString()} • ${escapeHtml(ev.title)} ${ev.contactId ? '• '+escapeHtml(state.contacts.find(c=>c.id===ev.contactId)?.name||'') : ''}`).join('<br>');
+      }
+
+      // Export / import
+      qs('#btn-export-json').addEventListener('click', ()=>{
+        const raw = JSON.stringify(state,null,2);
+        const w = window.open('about:blank','_blank');
+        w.document.write('<pre>'+escapeHtml(raw)+'</pre>');
+      });
+
+      // Email send mock / mark sent
+      qs('#btn-send-mock').addEventListener('click', ()=>{
+        alert('Generated email in preview. This is a mock send (offline).');
+      });
+      qs('#btn-mark-sent').addEventListener('click', ()=>{
+        logDashboard('Marked mock email as sent.');
+      });
+
+      // Utility escape
+      function escapeHtml(s){ return String(s || '').replace(/[&<>"]/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+      // Mark event responses / follow-up automation
+      // If an event is created with contact and flagged autoBatch, we can auto-create a follow-up after meeting
+      // For demo: when an event is removed we won't auto schedule follow-ups automatically; adding manual follow-up capability is left to UI.
+
+      // Event drag-and-drop is handled by drop zones in calendar renderers
+
+      // Event creation from templates: simplified via openEmailForContact()
+
+      // Initialize UI & render
+      renderAll();
+
+  // Wire top-level buttons
+  qs('#btn-new-task').addEventListener('click', ()=> openTaskForm());
+  // `#btn-auto-schedule` already has its handler above; do not bind it to itself (would recurse).
+  // qs('#btn-auto-schedule').addEventListener('click', ()=> /* already wired */ null);
+  qs('#btn-new-contact').addEventListener('click', ()=> openContactForm());
+  qs('#btn-new-template').addEventListener('click', ()=> openTemplateForm());
+
+      // Keyboard shortcut to create quick task (N)
+      document.addEventListener('keydown', (e)=> {
+        if(e.key === 'n' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); openTaskForm(); }
+      });
+
+      // Add sample slot drop highlight (CSS not dynamic)
+      // Done
+
+      // Simple sanity: if localStorage becomes unavailable, warn
+      try{ localStorage.setItem('fs_test','1'); localStorage.removeItem('fs_test'); }catch(e){ alert('Warning: localStorage unavailable. App may not persist data.'); }
+
+      // Save periodically
+      setInterval(()=> saveState(), 5000);
+
+      // Handle API key settings
+      const aiApiKeyInput = qs('#ai-api-key');
+      const apiKeySavedMsg = qs('#api-key-saved');
+      
+      // Load existing key if any
+      if(state.settings && state.settings.agentApiKey){
+        aiApiKeyInput.value = state.settings.agentApiKey;
+      }
+
+      qs('#save-api-key').addEventListener('click', ()=> {
+        const key = aiApiKeyInput.value.trim();
+        if(!state.settings) state.settings = {};
+        state.settings.agentApiKey = key;
+        saveState();
+        apiKeySavedMsg.style.display = 'inline';
+        setTimeout(()=> apiKeySavedMsg.style.display = 'none', 2000);
+      });
+
+      qs('#clear-api-key').addEventListener('click', ()=> {
+        aiApiKeyInput.value = '';
+        if(state.settings) state.settings.agentApiKey = null;
+        saveState();
+        apiKeySavedMsg.style.display = 'inline';
+        setTimeout(()=> apiKeySavedMsg.style.display = 'none', 2000);
+      });
+
+      // Export state to console for debugging (developer helper)
+      window.fsState = state;
+      
+      // --- AI Scheduling Agent implementation (user-supplied, adapted) ---
+      class SchedulingAgent {
+        constructor() {
+          this.expertise = {
+            time_optimization: "Expert in founder productivity and time blocking",
+            investor_relations: "Expert in fundraising timelines and investor communications",
+            task_prioritization: "Expert in startup task prioritization frameworks"
+          };
+        }
+
+        async analyzeSchedule(stateArg, goal = 'optimize') {
+          const prompt = `\nANALYZE THIS STARTUP FOUNDER'S SCHEDULE:\n\nTASKS: ${JSON.stringify(stateArg.tasks, null, 2)}\nEVENTS: ${JSON.stringify(stateArg.events, null, 2)}\nCONTACTS: ${JSON.stringify(stateArg.contacts, null, 2)}\nGOAL: ${goal}\n\nANALYSIS REQUEST:\n1. Identify scheduling conflicts or overloads\n2. Suggest optimal task sequencing based on priorities\n3. Recommend investor meeting slots\n4. Flag urgent deadlines\n5. Provide productivity insights\n\nFORMAT RESPONSE AS:\n🔍 Schedule Analysis\n📅 Recommended Adjustments\n🎯 Priority Actions\n⏰ Time Optimization Tips\n🤝 Investor Outreach Strategy\n\nBase recommendations on startup best practices.\n`;
+
+          return await this.callAI(prompt);
+        }
+
+        async generateEmailStrategy(contact, template, context) {
+          const prompt = `\nGENERATE INVESTOR OUTREACH STRATEGY:\n\nCONTACT: ${JSON.stringify(contact)}\nTEMPLATE: ${JSON.stringify(template)}\nCONTEXT: ${JSON.stringify(context)}\n\nCREATE:\n1. Personalized opening hook\n2. Value proposition highlights\n3. Call-to-action optimization\n4. Follow-up sequence timing\n5. Objection handling points\n\nMake it compelling and founder-friendly.\n`;
+
+          return await this.callAI(prompt);
+        }
+
+        async suggestMeetingTimes(stateArg, duration = 30, daysAhead = 14) {
+          const prompt = `\nSUGGEST OPTIMAL MEETING TIMES:\n\nCURRENT SCHEDULE: ${JSON.stringify(stateArg.events, null, 2)}\nWORK HOURS: ${stateArg.settings.workStart}-${stateArg.settings.workEnd}\nDURATION: ${duration} minutes\nLOOKAHEAD: ${daysAhead} days\n\nConsider:\n- Founder energy patterns (morning deep work, afternoon meetings)\n- Buffer time between meetings\n- Investor availability patterns\n- Timezone considerations\n- Urgent vs important balance\n\nProvide specific date/time recommendations.\n`;
+
+          return await this.callAI(prompt);
+        }
+
+        async callAI(prompt) {
+          // Read API key from state.settings or localStorage. If missing, fall back to local heuristics.
+          const apiKey = (state && state.settings && state.settings.agentApiKey) ? state.settings.agentApiKey : (localStorage.getItem('OPENAI_API_KEY') || null);
+          if(!apiKey){
+            return this.getFallbackResponse();
+          }
+
+          try {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + apiKey
+              },
+              body: JSON.stringify({ model: 'gpt-4', messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 800 })
+            });
+            const data = await response.json();
+            if(data && data.choices && data.choices[0]){
+              if(data.choices[0].message && data.choices[0].message.content) return data.choices[0].message.content.trim();
+              if(data.choices[0].text) return data.choices[0].text.trim();
+            }
+            return this.getFallbackResponse();
+          } catch (error) {
+            console.error('SchedulingAgent.callAI error', error);
+            return this.getFallbackResponse();
+          }
+        }
+
+        getFallbackResponse() {
+          return "I'm currently analyzing your schedule. For now, try scheduling high-priority tasks in morning slots and investor meetings in afternoon.";
+        }
+      }
+
+      // Initialize agent
+      const schedulerAgent = new SchedulingAgent();
+
+      // Wire AI buttons
+      const aiAnalyzeBtn = qs('#ai-analyze');
+      const aiSuggestTimesBtn = qs('#ai-suggest-times');
+      const aiSuggestBtn = qs('#ai-suggest');
+      const aiOutput = qs('#ai-output');
+
+      if(aiAnalyzeBtn){
+        aiAnalyzeBtn.addEventListener('click', async ()=>{
+          aiOutput.textContent = 'Analyzing schedule...';
+          try{
+            const out = await schedulerAgent.analyzeSchedule(state);
+            aiOutput.textContent = out;
+          }catch(e){ aiOutput.textContent = 'Analysis failed.'; console.error(e); }
+        });
+      }
+
+      if(aiSuggestTimesBtn){
+        aiSuggestTimesBtn.addEventListener('click', async ()=>{
+          aiOutput.textContent = 'Finding suggested meeting times...';
+          try{
+            const out = await schedulerAgent.suggestMeetingTimes(state, 30, 14);
+            aiOutput.textContent = out;
+          }catch(e){ aiOutput.textContent = 'Suggest times failed.'; console.error(e); }
+        });
+      }
+
+      if(aiSuggestBtn){
+        aiSuggestBtn.addEventListener('click', ()=>{
+          const tone = qs('#ai-tone').value;
+          const out = suggestNextActions(tone);
+          renderAIOutput(out);
+        });
+      }
+      // PostMessage bridge: respond to parent requests from Mentorship UI
+      window.addEventListener('message', (ev) => {
+        try{
+          const m = ev.data || {};
+          if(m.type === 'requestState'){
+            // send full state back to requester
+            ev.source.postMessage({type:'state', state: state}, '*');
+          }
+          if(m.type === 'createEvent'){
+            const p = m.payload || {};
+            const res = createEvent(p.title, p.date, p.start, p.duration || 30, p.contactId || null, p.meta || {});
+            ev.source.postMessage({type:'createEventResult', result: res}, '*');
+          }
+          if(m.type === 'getEvents'){
+            ev.source.postMessage({type:'events', events: state.events}, '*');
+          }
+        }catch(err){ console.error('postMessage handler error', err); }
+      });
+
+      // notify parent (if any) that scheduler is ready
+      try{ if(window.parent && window.parent !== window) window.parent.postMessage({type:'ready'}, '*'); }catch(e){}
+
+      // Enhanced batch scheduling with AI
+      async function aiBatchSchedule() {
+          const investors = state.contacts.filter(c => 
+              (c.role || '').toLowerCase().includes('invest') || 
+              (c.company || '').toLowerCase().includes('capital') ||
+              (c.company || '').toLowerCase().includes('ventures')
+          );
+          
+          if (investors.length === 0) {
+              alert('No investor contacts found. Add contacts with "investor" in their role.');
+              return;
+          }
+
+          try {
+              const strategy = await schedulerAgent.generateEmailStrategy(
+                  investors[0], 
+                  state.templates[0],
+                  { startup: 'Your Startup', stage: profile.stage }
+              );
+              
+              logDashboard('AI analyzed investor outreach strategy');
+              renderAIOutput(strategy);
+              
+              // Auto-schedule meetings
+              let scheduled = 0;
+              for (const investor of investors.slice(0, 5)) {
+                  const times = await schedulerAgent.suggestMeetingTimes(state, 30, 7);
+                  // Parse AI response and create events
+                  if (times && times.includes(':')) {
+                      // Extract times from AI response and schedule
+                      scheduled++;
+                  }
+              }
+              
+              logDashboard(`AI scheduled ${scheduled} investor meetings`);
+              
+          } catch (error) {
+              logDashboard('AI scheduling unavailable, using fallback');
+              // Fallback to existing scheduling logic
+          }
+      }
+    })();
+  </script>
+</body>
+</html>

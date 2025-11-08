@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Startup Mentor Pro</title>
+  <meta name="description" content="Startup Mentor Pro — Dashboard, AI Mentor Chat, Resources, Profile (single-file offline)." />
+  <link rel="stylesheet" href="Mentorship.css">
+</head>
+<body>
+  <div class="app" role="application" aria-label="Startup Mentor Pro">
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">SM</div>
+        <div>
+          <h1>Startup Mentor Pro</h1>
+          <p>AI mentorship & resources for founders</p>
+        </div>
+      </div>
+
+      <nav class="tabs" role="tablist" aria-label="Main Navigation">
+        <button class="tab active" data-target="dashboard" role="tab" aria-selected="true">Dashboard</button>
+        <button class="tab" data-target="chat" role="tab" aria-selected="false">AI Mentor</button>
+        <button class="tab" data-target="scheduler" role="tab" aria-selected="false">Scheduler</button>
+        <button class="tab" data-target="profile" role="tab" aria-selected="false">Profile</button>
+      </nav>
+    </header>
+
+    <main class="container" role="main">
+      <!-- Left column: pages -->
+      <div>
+        <section id="dashboard" class="page active" aria-labelledby="tab-dashboard">
+          <div class="welcome">
+            <div>
+              <h2 style="margin:0">Welcome back, Founder</h2>
+              <p class="small">Here's a snapshot of your mentorship hub</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn" id="new-chat-btn">New Chat</button>
+            </div>
+          </div>
+
+          <div class="stats" aria-hidden="false">
+            <div class="stat">
+              <h3 id="stat-convos">0</h3>
+              <p>Conversations</p>
+            </div>
+            <div class="stat">
+              <h3 id="stat-messages">0</h3>
+              <p>Messages exchanged</p>
+            </div>
+            <div class="stat">
+              <h3 id="stat-templates">4</h3>
+              <p>Templates available</p>
+            </div>
+          </div>
+
+          <h3 style="margin-top:16px">Recent conversations</h3>
+          <div class="recent-list card" id="recent-list" aria-live="polite">
+            <!-- recent items injected -->
+            <div style="color:var(--muted);padding:12px">No conversations yet — start a chat to save them.</div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:center;margin-top:12px">
+            <div style="flex:1">
+              <h3 style="margin:4px 0">Recommendations</h3>
+              <div class="resources-reco">
+                <div class="reco">
+                  <strong>Funding</strong>
+                  <p class="small">Try our pitch deck template and funding checklist.</p>
+                </div>
+                <div class="reco">
+                  <strong>Go-to-market</strong>
+                  <p class="small">Marketing channel frameworks and first 100 users plan.</p>
+                </div>
+              </div>
+            </div>
+            <div style="width:180px;text-align:right">
+              <h4 style="margin:4px 0;color:var(--muted)">Quick actions</h4>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <button class="btn" id="qa-chat">Chat with Mentor</button>
+                <button class="btn secondary" id="qa-profile">Edit Profile</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="chat" class="page" aria-labelledby="tab-chat">
+          <h2 style="margin-top:0">AI Mentor Chat</h2>
+          <div class="chat-area card" role="region" aria-label="Chat interface">
+            <div class="messages" id="messages" tabindex="0" aria-live="polite">
+              <!-- messages injected here -->
+            </div>
+
+            <div style="padding:12px;display:flex;gap:8px;align-items:center;justify-content:space-between;border-top:1px solid rgba(11,61,145,0.03);">
+              <div style="display:flex;gap:12px;align-items:center">
+                <div class="small">Conversation: <span id="current-chat-name">Untitled</span></div>
+                <div class="small" style="display:flex;gap:8px;align-items:center">Mentor style:
+                  <select id="mentor-style" style="padding:6px;border-radius:8px;border:1px solid rgba(11,61,145,0.06);background:white;font-size:13px">
+                    <option value="balanced">Balanced</option>
+                    <option value="supportive">Supportive</option>
+                    <option value="direct">Direct</option>
+                    <option value="investor">Investor-focused</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <button class="btn secondary" id="save-chat-btn">Save</button>
+                <button class="btn secondary" id="clear-chat-btn">Clear</button>
+              </div>
+            </div>
+
+            <div class="chat-input">
+              <input type="text" id="chat-input" placeholder="Ask the AI mentor about fundraising, marketing, legal, operations..." aria-label="Message input" />
+              <div class="chat-actions">
+                <button class="btn" id="send-btn">Send</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="profile" class="page" aria-labelledby="tab-profile">
+          <h2 style="margin-top:0">Profile</h2>
+          <div class="card">
+            <form id="profile-form" autocomplete="off">
+              <div class="form-grid">
+                <div>
+                  <label for="fullname">Full name</label>
+                  <input type="text" id="fullname" name="fullname" placeholder="Your full name" />
+                </div>
+                <div>
+                  <label for="email">Email</label>
+                  <input type="email" id="email" name="email" placeholder="you@startup.com" />
+                </div>
+                <div>
+                  <label for="role">Role</label>
+                  <input type="text" id="role" name="role" placeholder="Founder / CEO" />
+                </div>
+                <div>
+                  <label for="startup">Startup name</label>
+                  <input type="text" id="startup" name="startup" placeholder="e.g., Launchlift" />
+                </div>
+                <div>
+                  <label for="stage">Stage</label>
+                  <select id="stage" name="stage">
+                    <option value="">Select stage</option>
+                    <option>Idea</option>
+                    <option>Pre-seed</option>
+                    <option>Seed</option>
+                    <option>Series A+</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="industry">Industry</label>
+                  <input type="text" id="industry" name="industry" placeholder="e.g., SaaS, Health" />
+                </div>
+              </div>
+
+              <div style="margin-top:12px">
+                <label for="description">Startup description</label>
+                <textarea id="description" name="description" placeholder="Short description of your product and traction"></textarea>
+              </div>
+
+              <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+                <div style="flex:1">
+                  <label for="preferences">Preferences</label>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+                    <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="pref-funding" /> Funding</label>
+                    <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="pref-marketing" /> Marketing</label>
+                    <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="pref-legal" /> Legal</label>
+                    <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="pref-ops" /> Operations</label>
+                  </div>
+                </div>
+                <div style="width:160px;text-align:right">
+                  <button class="btn" id="save-profile">Save</button>
+                </div>
+              </div>
+
+              <div id="profile-saved" class="save-msg" style="display:none">Profile saved.</div>
+            </form>
+          </div>
+        </section>
+
+          <section id="scheduler" class="page" aria-labelledby="tab-scheduler">
+            <h2 style="margin-top:0">Scheduler</h2>
+            <div class="card" style="padding:0;">
+              <iframe id="scheduler-iframe" src="taskscheduling.html" style="width:100%;height:640px;border:0;border-radius:8px"></iframe>
+            </div>
+            <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+              <button class="btn" id="sync-state">Sync Scheduler State</button>
+              <button class="btn secondary" id="open-scheduler-window">Open in New Window</button>
+              <div id="scheduler-status" class="small muted-sm">Connected: checking...</div>
+            </div>
+          </section>
+
+      </div>
+
+      <!-- Right column: sidebar -->
+      <aside class="side" aria-label="Sidebar">
+        <div class="card">
+          <h4 style="margin:0">Today</h4>
+          <p class="small" id="today">—</p>
+        </div>
+
+        <div class="card" id="sidebar-convos">
+          <h4 style="margin:0">Recent</h4>
+          <div id="sidebar-recent" class="small" style="margin-top:8px;color:var(--muted)">No recent chats</div>
+        </div>
+
+        <div class="card">
+          <h4 style="margin:0">Tips</h4>
+          <ul style="margin-top:8px;color:var(--muted);padding-left:18px">
+            <li>Ask the mentor for a 30-second investor pitch.</li>
+            <li>Try "growth channels for SaaS" for marketing advice.</li>
+            <li>Save chats to build a knowledge base.</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="app-footer">
+      <div>Startup Mentor Pro — Offline demo</div>
+      <div><small>Data stored locally in your browser (localStorage).</small></div>
+    </footer>
+  </div>
+
+  <script src="Mentorship.js"></script>
+  <script>
+    // Simple bridge to communicate with the scheduler iframe via postMessage
+    (function(){
+      const iframe = document.getElementById('scheduler-iframe');
+      const statusEl = document.getElementById('scheduler-status');
+      const syncBtn = document.getElementById('sync-state');
+      const openBtn = document.getElementById('open-scheduler-window');
+
+      function setStatus(txt){ if(statusEl) statusEl.textContent = 'Connected: ' + txt; }
+
+      // Listen for messages from scheduler
+      window.addEventListener('message', (ev) => {
+        const m = ev.data || {};
+        if(m.type === 'ready'){
+          setStatus('ready');
+        }
+        if(m.type === 'state'){
+          // Received full scheduler state
+          console.log('Scheduler state received', m.state);
+          setStatus('synced');
+          // we could display or use this state in the mentorship UI
+        }
+        if(m.type === 'createEventResult'){
+          console.log('Create event result', m.result);
+          setStatus(m.result.ok ? 'event created' : 'error');
+        }
+      });
+
+      // Ask iframe for state
+      if(syncBtn){
+        syncBtn.addEventListener('click', ()=>{
+          if(iframe && iframe.contentWindow){
+            iframe.contentWindow.postMessage({type:'requestState'}, '*');
+            setStatus('requested');
+          }
+        });
+      }
+
+      if(openBtn){
+        openBtn.addEventListener('click', ()=>{
+          window.open('taskscheduling.html', '_blank');
+        });
+      }
+
+      // convenience: request state once iframe loads
+      iframe.addEventListener('load', ()=>{
+        if(iframe.contentWindow) iframe.contentWindow.postMessage({type:'requestState'}, '*');
+      });
+    })();
+  </script>
+</body>
+</html>
